@@ -17,7 +17,7 @@ const api = {
           });
       },
       gendescription: (payload) => {
-        return fetch("/api/lab/groupchat/gendescription", {
+        return fetch("/api/lab/groupchat/description", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

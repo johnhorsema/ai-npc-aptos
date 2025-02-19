@@ -8,11 +8,7 @@ const resource = "hkust.azure-api.net";
 
 // Corresponds to your Model deployment within your OpenAI resource, e.g. my-gpt35-16k-deployment
 // Navigate to the Azure OpenAI Studio to deploy a model.
-export const model = {
-  profe: "gpt-4o", // Professor E,
-  dusty: "gpt-4o", // Dusty
-  dustyEQ: "gpt-4o", // Dusty EQ
-};
+export const model = "gpt-4o";
 
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
 const apiVersion = "2023-05-15";
@@ -28,9 +24,9 @@ if (!apiKey) {
 // }
 
 // Azure OpenAI requires a custom baseURL, api-version query param, and api-key header.
-export const dustyOpenAI = new OpenAI({
+export const openAI = new OpenAI({
   apiKey,
-  baseURL: `https://${resource}/openai/deployments/${model.dusty}`,
+  baseURL: `https://${resource}/openai/deployments/${model}`,
   defaultQuery: { "api-version": apiVersion },
   defaultHeaders: { "api-key": apiKey },
 });

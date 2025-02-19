@@ -24,17 +24,31 @@
                                 <div v-if="member.role">
                                     ({{ member.role }})
                                 </div>
-                                <div
-                                    class="text-xs text-gray-700"
-                                    v-if="member.description"
-                                >
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        Description
+                                    </div>
                                     {{ member.description }}
                                 </div>
-                                <div
-                                    class="text-xs text-gray-700"
-                                    v-if="member.instruction"
-                                >
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        Instruction
+                                    </div>
                                     {{ member.instruction }}
+                                </div>
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        MBTI
+                                    </div>
+                                    {{ member.personality_mbti }}
+                                </div>
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        Big Five
+                                    </div>
+                                    <PersonalityGraph
+                                        :data="member.personality_bigfive"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -98,6 +112,7 @@
 <script setup>
 import { ref } from "vue";
 import { format, formatDistanceToNow } from "date-fns";
+import PersonalityGraph from "../components/PersonalityGraph.vue";
 import api from "../api";
 
 const responses = ref([]);
@@ -556,24 +571,22 @@ const addAgent = () => {
     let d = randomName();
     let name = d.name ? d.name : `${d.role}_${d.race}_${d.gender}`;
     api.lab.groupchat
-        .completion({
-            query: params.query,
-            log: params.messages,
-            instruction: `
-              Generate responses of the below agents, separated by "||".\n
-              ${members.value
-                  .map((m) => m.id + ": " + m.instruction)
-                  .join("\n")}
-            `,
+        .gendescription({
+            race: d.race,
+            role: d.role,
+            gender: d.gender,
         })
         .then((r) => {
+            const data = JSON.parse(r.content);
             members.value.push({
                 name: name,
                 id: slug(name),
-                description: d.description,
+                description: data.description,
                 role: d.role,
                 image: d.image,
-                instruction: r.content,
+                instruction: data.system_prompt,
+                personality_mbti: data.personality_mbti,
+                personality_bigfive: data.personality_bigfive,
             });
         })
         .catch((e) => {
@@ -628,15 +641,21 @@ const startChat = () => {
             query: params.query,
             log: params.messages,
             instruction: `
-              Generate responses of the below agents, separated by "||".\n
+              Generate responses of the below agents, separated by linebreak.\n
               ${members.value
-                  .map((m) => m.id + ": " + m.instruction)
+                  .map(
+                      (m) =>
+                          m.name +
+                          `\ninstruction:${m.instruction}` +
+                          +`\nmbti:${m.personality_mbti}`,
+                      +`\nbigfive:${JSON.stringify(m.personality_bigfive)}`,
+                  )
                   .join("\n")}
             `,
         })
         .then((r) => {
-            responses.value = r.content.split("||").filter((m) => m);
-            console.log(r.content.split("||"));
+            responses.value = r.content.split(/\n+/).filter((m) => m);
+            console.log(r.content.split(/\n+/));
             // addResponse(r.system);
         })
         .catch((e) => {

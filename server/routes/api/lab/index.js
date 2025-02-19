@@ -1,7 +1,7 @@
 import express from "express";
 import sqlite from "better-sqlite3";
 import { auth } from "../../../auth/index.js";
-import { model, dustyOpenAI } from "../chat/openai.js";
+import { model, openAI } from "../chat/openai.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -13,72 +13,65 @@ const dbPath = path.resolve(__dirname, "../../../data/ainpc.db");
 const db = new sqlite(dbPath, { verbose: console.log });
 const lab = express.Router();
 
-lab.post("/groupchat/gendescription", async (req, res) => {
-  const authRequest = auth.handleRequest(req, res);
-  const session = await authRequest.validate();
+lab.post("/groupchat/description", async (req, res) => {
+  const { body } = req;
+  const basePrompt = `
+    Generate character name, description, system prompt, speech, personality based on the provided role, race and gender.
+    role: ${body.role}
+    race: ${body.race},
+    gender: ${body.gender}
 
-  if (session) {
-    const user_id = session.user.userId;
-    const role = session.user.role;
-
-    const basePrompt = `
-      Generate character description based on the provided role, race and gender.
-    `;
-
-    const { body } = req;
-    const systemPrompt = basePrompt;
-
-    if (role !== "tester") {
-      res.json({
-        cause: {
-          code: "Unauthorized.",
-        },
-      });
-    } else {
-      // Provide system prompt
-      let messages = [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ];
-
-      // If there are previous messages, append
-      messages = messages.concat(
-        body.log?.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })) ?? [],
-      );
-
-      try {
-        const result = await dustyOpenAI.chat.completions.create({
-          model: model.dusty,
-          messages: messages,
-        });
-
-        let content = "";
-        content = result.choices[0]?.message?.content;
-
-        res.json({ content });
-      } catch (e) {
-        res.json(e);
-      }
+    JSON output:
+    {
+      name: "",
+      description: "",
+      system_prompt: "",
+      // range 0-100
+      personality_bigfive: {
+        "openness": 0,
+        "conscientiousness": 0,
+        "extraversion": 0,
+        "agreeableness": 0,
+        "neuroticism": 0
+      },
+      personality_mbti: ""
     }
-  } else {
-    return res.sendStatus(401);
+  `;
+  const systemPrompt = basePrompt;
+
+  let messages = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+  ];
+
+  // If there are previous messages, append
+  messages = messages.concat(
+    body.log?.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })) ?? [],
+  );
+
+  try {
+    const result = await openAI.chat.completions.create({
+      model: model,
+      messages: messages,
+      response_format: { type: "json_object" },
+    });
+
+    let content = "";
+    content = result.choices[0]?.message?.content;
+
+    res.json({ content });
+  } catch (e) {
+    res.json(e);
   }
 });
 
 lab.post("/groupchat/completion", async (req, res) => {
-  const authRequest = auth.handleRequest(req, res);
-  const session = await authRequest.validate();
-
-  if (session) {
-    const user_id = session.user.userId;
-    const role = session.user.role;
-
-    const basePrompt = `
+  const basePrompt = `
       <BASE PROMPT START>
       Don't generate next message until prior one completed/line per user and talk an learn amongst themselves/output in one window like msn/discord like chat room style/User can't send messages BUT can set the initial guiding context. Conversation and bots begin conversing once start conversation button pressed/Conversation speed toggle and options to procedurally dd more AI agents to the mix while conversation is happening.
 
@@ -89,48 +82,37 @@ lab.post("/groupchat/completion", async (req, res) => {
       <PROMPT START>
     `;
 
-    const { body } = req;
-    const systemPrompt = basePrompt + body.instruction.trim() + "</PROMPT END>";
+  const { body } = req;
+  const systemPrompt = basePrompt + body.instruction.trim() + "</PROMPT END>";
 
-    if (role !== "tester") {
-      res.json({
-        cause: {
-          code: "Unauthorized.",
-        },
-      });
-    } else {
-      // Provide system prompt
-      let messages = [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ];
+  // Provide system prompt
+  let messages = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+  ];
 
-      // If there are previous messages, append
-      messages = messages.concat(
-        body.log?.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })) ?? [],
-      );
+  // If there are previous messages, append
+  messages = messages.concat(
+    body.log?.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })) ?? [],
+  );
 
-      try {
-        const result = await dustyOpenAI.chat.completions.create({
-          model: model.dusty,
-          messages: messages,
-        });
+  try {
+    const result = await openAI.chat.completions.create({
+      model: model.dusty,
+      messages: messages,
+    });
 
-        let content = "";
-        content = result.choices[0]?.message?.content;
+    let content = "";
+    content = result.choices[0]?.message?.content;
 
-        res.json({ content });
-      } catch (e) {
-        res.json(e);
-      }
-    }
-  } else {
-    return res.sendStatus(401);
+    res.json({ content });
+  } catch (e) {
+    res.json(e);
   }
 });
 
