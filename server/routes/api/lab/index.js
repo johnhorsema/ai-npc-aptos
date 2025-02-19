@@ -16,7 +16,7 @@ const lab = express.Router();
 lab.post("/groupchat/description", async (req, res) => {
   const { body } = req;
   const basePrompt = `
-    Generate character name, description, system prompt, speech, personality based on the provided role, race and gender.
+    Generate character name, description, system prompt, personality based on the provided role, race and gender.
     role: ${body.role}
     race: ${body.race},
     gender: ${body.gender}
@@ -63,6 +63,8 @@ lab.post("/groupchat/description", async (req, res) => {
 
     let content = "";
     content = result.choices[0]?.message?.content;
+    content = JSON.parse(content);
+    content = content[0];
 
     res.json({ content });
   } catch (e) {
@@ -73,17 +75,14 @@ lab.post("/groupchat/description", async (req, res) => {
 lab.post("/groupchat/completion", async (req, res) => {
   const basePrompt = `
       <BASE PROMPT START>
-      Don't generate next message until prior one completed/line per user and talk an learn amongst themselves/output in one window like msn/discord like chat room style/User can't send messages BUT can set the initial guiding context. Conversation and bots begin conversing once start conversation button pressed/Conversation speed toggle and options to procedurally dd more AI agents to the mix while conversation is happening.
-
-      Responses usually only 1-2 sentences. Occasionally more if contextually appropriate but no more than 3-4 sentences, stick to being concise.
-
-      Ensure speed toggle can never be quicker then the generation to avoid errors/if error generating try again/ensure agents ALWAYS respond to the correct prior agent.
+      You are a character in a RPG game. Respond to the query while closely following the system prompt and personality defined below. Do not respond as any other character.
       </BASE PROMPT END>
-      <PROMPT START>
+      <SYSTEM PROMPT>
     `;
 
   const { body } = req;
-  const systemPrompt = basePrompt + body.instruction.trim() + "</PROMPT END>";
+  const systemPrompt =
+    basePrompt + body.instruction.trim() + "</SYSTEM PROMPT>";
 
   // Provide system prompt
   let messages = [
@@ -103,7 +102,7 @@ lab.post("/groupchat/completion", async (req, res) => {
 
   try {
     const result = await openAI.chat.completions.create({
-      model: model.dusty,
+      model: model,
       messages: messages,
     });
 

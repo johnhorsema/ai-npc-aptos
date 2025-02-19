@@ -20,9 +20,21 @@
                             <div
                                 class="text-sm font-medium text-gray-900 text-center break-words"
                             >
-                                <div>{{ member.name }}</div>
-                                <div v-if="member.role">
-                                    ({{ member.role }})
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">ID</div>
+                                    {{ member.id }}
+                                </div>
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        Name
+                                    </div>
+                                    {{ member.name }}
+                                </div>
+                                <div class="text-gray-700">
+                                    <div class="text-gray-500 text-sm">
+                                        Role
+                                    </div>
+                                    {{ member.role }}
                                 </div>
                                 <div class="text-gray-700">
                                     <div class="text-gray-500 text-sm">
@@ -70,17 +82,24 @@
             <div class="mb-3">
                 <div
                     class="p-3 mb-3 rounded border border-solid border-gray-200 bg-white text-xs text-gray-700"
-                    v-for="(r, i) in responses"
+                    v-for="(r, i) in threads"
                     :key="i"
                 >
                     <div class="flex">
                         <img
+                            v-if="r.role == 'system'"
                             alt=""
-                            :src="getAvatar(members[i])"
+                            :src="getAvatar(members[r.member_idx])"
+                            class="size-14 rounded-full object-cover"
+                        />
+                        <img
+                            v-else
+                            alt=""
+                            src="/assets/user.png"
                             class="size-14 rounded-full object-cover"
                         />
                         <div>
-                            {{ r }}
+                            {{ r.content }}
                         </div>
                     </div>
                 </div>
@@ -569,7 +588,7 @@ const randomName = () => {
 
 const addAgent = () => {
     let d = randomName();
-    let name = d.name ? d.name : `${d.role}_${d.race}_${d.gender}`;
+    let id = `${d.role}_${d.race}_${d.gender}`;
     api.lab.groupchat
         .gendescription({
             race: d.race,
@@ -577,10 +596,10 @@ const addAgent = () => {
             gender: d.gender,
         })
         .then((r) => {
-            const data = JSON.parse(r.content);
+            const data = r.content;
             members.value.push({
-                name: name,
-                id: slug(name),
+                name: data.name,
+                id: slug(id),
                 description: data.description,
                 role: d.role,
                 image: d.image,
@@ -595,24 +614,23 @@ const addAgent = () => {
 };
 
 const getAvatar = (m) => {
-    return m.avatar
-        ? m.avatar
-        : `/assets/characters/${m.role.toLowerCase()}/${m.image}`;
+    return `/assets/characters/${m.role.toLowerCase()}/${m.image}`;
 };
 
 const message = ref("");
 const threads = ref([]);
 
-const addResponse = () => {
+const addResponse = (content, id, idx) => {
     let m = {
         role: "system",
-        content: message.value,
+        content: `${id}:${content}`,
         created: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
+        member_idx: idx,
     };
     threads.value.push(m);
 };
 
-const startChat = () => {
+const startChat = async () => {
     let m = {
         role: "user",
         content: message.value,
@@ -636,30 +654,19 @@ const startChat = () => {
         query: m.content,
     };
 
-    api.lab.groupchat
-        .completion({
-            query: params.query,
-            log: params.messages,
-            instruction: `
-              Generate responses of the below agents, separated by linebreak.\n
-              ${members.value
-                  .map(
-                      (m) =>
-                          m.name +
-                          `\ninstruction:${m.instruction}` +
-                          +`\nmbti:${m.personality_mbti}`,
-                      +`\nbigfive:${JSON.stringify(m.personality_bigfive)}`,
-                  )
-                  .join("\n")}
-            `,
-        })
-        .then((r) => {
-            responses.value = r.content.split(/\n+/).filter((m) => m);
-            console.log(r.content.split(/\n+/));
-            // addResponse(r.system);
-        })
-        .catch((e) => {
-            console.error(e);
-        });
+    const res = await Promise.all(
+        members.value.map((m) => {
+            return api.lab.groupchat.completion({
+                query: params.query,
+                log: params.messages,
+                instruction: `${m.instruction}\nmbti:${m.personality_mbti}`,
+            });
+        }),
+    );
+
+    const responses = res.map((r) => r.content);
+    for (var i = 0; i < responses.length; i++) {
+        addResponse(responses[i], members.value[i].id, i);
+    }
 };
 </script>

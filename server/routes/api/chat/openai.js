@@ -8,12 +8,12 @@ const resource = "hkust.azure-api.net";
 
 // Corresponds to your Model deployment within your OpenAI resource, e.g. my-gpt35-16k-deployment
 // Navigate to the Azure OpenAI Studio to deploy a model.
-export const model = "gpt-4o";
+export const model = "google/gemini-2.0-flash-lite-preview-02-05:free";
 
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
 const apiVersion = "2023-05-15";
 
-const apiKey = env["API_KEY"];
+const apiKey = env["OR_API_KEY"];
 if (!apiKey) {
   throw new Error("API_KEY environment variable is missing or empty.");
 }
@@ -26,7 +26,7 @@ if (!apiKey) {
 // Azure OpenAI requires a custom baseURL, api-version query param, and api-key header.
 export const openAI = new OpenAI({
   apiKey,
-  baseURL: `https://${resource}/openai/deployments/${model}`,
+  baseURL: `https://openrouter.ai/api/v1`,
   defaultQuery: { "api-version": apiVersion },
   defaultHeaders: { "api-key": apiKey },
 });
