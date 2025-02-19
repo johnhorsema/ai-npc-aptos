@@ -555,13 +555,30 @@ const randomName = () => {
 const addAgent = () => {
     let d = randomName();
     let name = d.name ? d.name : `${d.role}_${d.race}_${d.gender}`;
-    members.value.push({
-        name: name,
-        id: slug(name),
-        description: d.description,
-        role: d.role,
-        image: d.image,
-    });
+    api.lab.groupchat
+        .completion({
+            query: params.query,
+            log: params.messages,
+            instruction: `
+              Generate responses of the below agents, separated by "||".\n
+              ${members.value
+                  .map((m) => m.id + ": " + m.instruction)
+                  .join("\n")}
+            `,
+        })
+        .then((r) => {
+            members.value.push({
+                name: name,
+                id: slug(name),
+                description: d.description,
+                role: d.role,
+                image: d.image,
+                instruction: r.content,
+            });
+        })
+        .catch((e) => {
+            console.error(e);
+        });
 };
 
 const getAvatar = (m) => {

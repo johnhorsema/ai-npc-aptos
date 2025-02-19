@@ -13,11 +13,68 @@ const dbPath = path.resolve(__dirname, "../../../data/ainpc.db");
 const db = new sqlite(dbPath, { verbose: console.log });
 const lab = express.Router();
 
+lab.post("/groupchat/gendescription", async (req, res) => {
+  const authRequest = auth.handleRequest(req, res);
+  const session = await authRequest.validate();
+
+  if (session) {
+    const user_id = session.user.userId;
+    const role = session.user.role;
+
+    const basePrompt = `
+      Generate character description based on the provided role, race and gender.
+    `;
+
+    const { body } = req;
+    const systemPrompt = basePrompt;
+
+    if (role !== "tester") {
+      res.json({
+        cause: {
+          code: "Unauthorized.",
+        },
+      });
+    } else {
+      // Provide system prompt
+      let messages = [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+      ];
+
+      // If there are previous messages, append
+      messages = messages.concat(
+        body.log?.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })) ?? [],
+      );
+
+      try {
+        const result = await dustyOpenAI.chat.completions.create({
+          model: model.dusty,
+          messages: messages,
+        });
+
+        let content = "";
+        content = result.choices[0]?.message?.content;
+
+        res.json({ content });
+      } catch (e) {
+        res.json(e);
+      }
+    }
+  } else {
+    return res.sendStatus(401);
+  }
+});
+
 lab.post("/groupchat/completion", async (req, res) => {
   const authRequest = auth.handleRequest(req, res);
   const session = await authRequest.validate();
 
-  if (session && session.user.role === "tester") {
+  if (session) {
     const user_id = session.user.userId;
     const role = session.user.role;
 
