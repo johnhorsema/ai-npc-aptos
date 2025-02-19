@@ -1,0 +1,27 @@
+
+
+{
+  "firstName": "",
+  "age": "",
+  "gender": "",
+  "birthDate": "",
+  "email": "",
+  "phone": ""',
+  "address": {
+    "city": "",
+    "state": "",
+    "country": ""
+  },
+  "education": ｛
+    "highschool":"",
+    "university": "",
+  },
+  "interests": []
+  "careerGoals": ［]
+  "emotions": {
+    "positive": [],
+    "negative": [],
+    "neutral": []
+  },
+  "skills": []
+}
